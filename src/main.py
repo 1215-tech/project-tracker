@@ -19,6 +19,14 @@ class Task(BaseModel):
     project_id: int
     task_description: str
 
+
+class TaskCreate(BaseModel):
+    project_id: int
+    task_description: str
+
+class TaskUpdate(BaseModel):
+    task_description: str
+
 # API Endpoints 
 
 @app.on_event("startup")
@@ -55,3 +63,56 @@ def get_tasks_for_project(project_id: int):
     if not tasks:
         raise HTTPException(status_code=404, detail="No tasks found for this project")
     return tasks
+
+@app.post("/tasks/", response_model=Task, status_code=201)
+def create_task(task: TaskCreate):
+    """New task"""
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+    query = "INSERT INTO tasks (project_id, task_description) VALUES (%s, %s)"
+    cursor.execute(query, (task.project_id, task.task_description))
+    new_task_id = cursor.lastrowid
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"id": new_task_id, "project_id": task.project_id, "task_description": task.task_description}
+
+@app.put("/tasks/{task_id}", response_model=Task)
+def update_task(task_id: int, task: TaskUpdate):
+    """Update task"""
+    conn = db.get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    # Check if task exists
+    query_check = "SELECT project_id FROM tasks WHERE id = %s"
+    cursor.execute(query_check, (task_id,))
+    result = cursor.fetchone()
+    if not result:
+        raise HTTPException(status_code=404, detail="Task not found")
+    project_id = result['project_id']
+
+    # Update the task
+    query_update = "UPDATE tasks SET task_description = %s WHERE id = %s"
+    cursor.execute(query_update, (task.task_description, task_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {"id": task_id, "project_id": project_id, "task_description": task.task_description}
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    """Delete task"""
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+    # Check if task exists
+    query_check = "SELECT id FROM tasks WHERE id = %s"
+    cursor.execute(query_check, (task_id,))
+    if not cursor.fetchone():
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Delete the task
+    query_delete = "DELETE FROM tasks WHERE id = %s"
+    cursor.execute(query_delete, (task_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return

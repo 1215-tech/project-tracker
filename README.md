@@ -1,5 +1,4 @@
 # Personal Project Tracker API
-## Still WIP some features may not work correctly
 
 A simple API to track projects and their tasks, built with Python, FastAPI, MySQL, and Docker. This project was created to demonstrate skills in backend development, database management, and containerization.
 
